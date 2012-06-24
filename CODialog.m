@@ -7,6 +7,7 @@
 //
 
 #import "CODialog.h"
+ 
 
 
 @interface CODialogTextField : UITextField
@@ -32,7 +33,7 @@
 #define CODialogSynth(x) @synthesize x = x##_;
 #define CODialogAssertMQ() NSAssert(dispatch_get_current_queue() == dispatch_get_main_queue(), @"%@ must be called on main queue", NSStringFromSelector(_cmd));
 
-#define kCODialogAnimationDuration 0.15
+#define kCODialogAnimationDuration 0.15  
 #define kCODialogPopScale 0.5
 #define kCODialogPadding 8.0
 #define kCODialogFrameInset 8.0
@@ -51,6 +52,7 @@
 }
 CODialogSynth(customView)
 CODialogSynth(dialogStyle)
+CODialogSynth(dialogColorStyle)
 CODialogSynth(title)
 CODialogSynth(subtitle)
 CODialogSynth(batchDelay)
@@ -71,6 +73,7 @@ CODialogSynth(highlightedIndex)
 - (id)initWithWindow:(UIWindow *)hostWindow {
   self = [super initWithFrame:[self defaultDialogFrame]];
   if (self) {
+    dialogColorStyle_=CODialogColorStyleBlue;
     self.batchDelay = 0;
     self.highlightedIndex = -1;
     self.titleFont = [UIFont boldSystemFontOfSize:18.0];
@@ -234,10 +237,20 @@ CODialogSynth(highlightedIndex)
   
   // Buttons frame (note that views are in the content view coordinate system)
   CGFloat buttonsHeight = 0;
+  
   minY = CGRectGetMaxY(layout.textFieldsRect);
   if (self.buttons.count > 0) {
+        
+      if (self.buttons.count<3)
+      {
     buttonsHeight = kCODialogButtonHeight;
     minY += kCODialogPadding;
+      }
+      else
+      {
+          buttonsHeight = kCODialogButtonHeight*(CGFloat)self.buttons.count+kCODialogPadding*(CGFloat)(self.buttons.count-1);
+          minY += kCODialogPadding;  
+      }
   }
   layout.buttonRect = CGRectMake(CGRectGetMinX(layoutFrame), minY, layoutWidth, buttonsHeight);
   
@@ -273,6 +286,8 @@ CODialogSynth(highlightedIndex)
   // Layout buttons
   NSUInteger count = self.buttons.count;
   if (count > 0) {
+      if (count<3)
+      {
     CGFloat buttonWidth = (CGRectGetWidth(layout.buttonRect) - kCODialogPadding * ((CGFloat)count - 1.0)) / (CGFloat)count;
     
     for (int i=0; i<count; i++) {
@@ -304,7 +319,43 @@ CODialogSynth(highlightedIndex)
       UIGraphicsEndImageContext();
       
       [newContentView addSubview:button];
-    }
+     }
+      }
+      else      {
+          CGFloat buttonWidth = (CGRectGetWidth(layout.buttonRect)) /* * ((CGFloat)count - 1.0)) / (CGFloat)count */;
+          
+          for (int i=0; i<count; i++) {
+              CGFloat left = 0 /*(kCODialogPadding + buttonWidth) * (CGFloat)i */;
+              CGRect buttonFrame = CGRectIntegral(CGRectMake(left, CGRectGetMinY(layout.buttonRect)+(kCODialogPadding+kCODialogButtonHeight)*(CGFloat)i, buttonWidth, kCODialogButtonHeight));
+              
+              UIButton *button = [self.buttons objectAtIndex:i];
+              button.frame = buttonFrame;
+              button.autoresizingMask = UIViewAutoresizingFlexibleBottomMargin;
+              
+              BOOL highlighted = (self.highlightedIndex == i);
+              NSString *title = [button titleForState:UIControlStateNormal];
+              
+              // Set default image
+              UIGraphicsBeginImageContextWithOptions(buttonFrame.size, NO, 0);
+              [self drawButtonInRect:(CGRect){CGPointZero, buttonFrame.size} title:title highlighted:highlighted down:NO];
+              
+              [button setImage:UIGraphicsGetImageFromCurrentImageContext() forState:UIControlStateNormal];
+              
+              UIGraphicsEndImageContext();
+              
+              // Set alternate image
+              UIGraphicsBeginImageContextWithOptions(buttonFrame.size, NO, 0);
+              
+              [self drawButtonInRect:(CGRect){CGPointZero, buttonFrame.size} title:title highlighted:NO down:YES];
+              [button setImage:UIGraphicsGetImageFromCurrentImageContext() forState:UIControlStateHighlighted];
+              
+              UIGraphicsEndImageContext();
+              
+              [newContentView addSubview:button];
+          }
+      }
+
+          
   }
   
   // Fade content views
@@ -384,12 +435,16 @@ CODialogSynth(highlightedIndex)
   [self addButtonWithTitle:title target:target selector:sel highlighted:NO];
 }
 
-- (void)addButtonWithTitle:(NSString *)title target:(id)target selector:(SEL)sel highlighted:(BOOL)flag {
+- (void)addButtonWithTitle:(NSString *)title target:(id)target selector:(SEL)sel  highlighted:(BOOL)flag  {
+    [self addButtonWithTitle:title target:target selector:sel tag:0 highlighted:NO];
+}
+
+
+- (void)addButtonWithTitle:(NSString *)title target:(id)target selector:(SEL)sel tag:(NSInteger)tag highlighted:(BOOL)flag {
   UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
-  
   [button setTitle:title forState:UIControlStateNormal];
   [button addTarget:target action:sel forControlEvents:UIControlEventTouchUpInside];
-  
+    button.tag=tag;
   if (flag) {
     self.highlightedIndex = self.buttons.count;
   }
@@ -486,12 +541,41 @@ CODialogSynth(highlightedIndex)
   CGContextSetAlpha(context, 0.65);
   
   // Color Declarations
-  UIColor *color = [UIColor colorWithRed:0.047 green:0.141 blue:0.329 alpha:1.0];
+ // GP  
+    UIColor *color;
+    NSArray *gradientColors;
+    
+    
   
   // Gradient Declarations
-  NSArray *gradientColors = [NSArray arrayWithObjects: 
-                              (id)[UIColor colorWithWhite:1.0 alpha:0.75].CGColor, 
-                              (id)[UIColor colorWithRed:0.227 green:0.310 blue:0.455 alpha:0.8].CGColor, nil];
+    switch (dialogColorStyle_) {
+        case CODialogColorStyleBlue:
+            color = [UIColor colorWithRed:0.047 green:0.141 blue:0.329 alpha:0.9];
+            gradientColors = [NSArray arrayWithObjects: 
+                                          (id)[UIColor colorWithWhite:1.0 alpha:0.75].CGColor, 
+                                          (id)[UIColor colorWithRed:0.227 green:0.310 blue:0.455 alpha:0.8].CGColor, nil];
+            break;
+            
+        case CODialogColorStyleGreen:    
+             color = [UIColor colorWithRed:0.047 green:0.329 blue:0.141 alpha:0.9];
+             gradientColors=[NSArray arrayWithObjects: 
+                            (id)[UIColor colorWithWhite:1.0 alpha:0.75].CGColor, 
+                            (id)[UIColor colorWithRed:0.227 green:0.455 blue:0.310 alpha:0.8].CGColor, nil];
+            break;
+        
+        case CODialogColorStyleOrange:
+            color = [UIColor colorWithRed:0.935 green:0.403 blue:0.02 alpha:0.9];
+            
+         
+            
+            gradientColors=[NSArray arrayWithObjects: 
+                            (id)[UIColor colorWithWhite:1.0 alpha:0.75].CGColor, 
+                            (id)[UIColor colorWithRed:0.97 green:0.582 blue:0.0 alpha:0.8].CGColor, nil];
+            break;
+            
+    }  
+  
+   
   CGFloat gradientLocations[] = {0, 1};
   CGGradientRef gradient2 = CGGradientCreateWithColors(colorSpace, (__bridge CFArrayRef)gradientColors, gradientLocations);
   
@@ -538,10 +622,10 @@ CODialogSynth(highlightedIndex)
   
   CGContextSaveGState(context);
   
-  [bezierPath addClip];
-  
+  [bezierPath addClip]; 
+   
   CGContextDrawLinearGradient(context, gradient2, CGPointMake(w2, 0), CGPointMake(w2, h2), 0);
-  CGContextRestoreGState(context);
+  CGContextRestoreGState(context); 
   
   // Stroke
   [[UIColor whiteColor] setStroke];  
