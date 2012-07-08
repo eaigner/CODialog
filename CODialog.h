@@ -9,6 +9,7 @@
 #import <UIKit/UIKit.h>
 
 
+
 enum {
   CODialogStyleDefault = 0,
   CODialogStyleIndeterminate,
@@ -19,13 +20,22 @@ enum {
 };
 typedef NSInteger CODialogStyle;
 
+enum {
+    CODialogColorStyleBlue = 0,
+    CODialogColorStyleGreen,
+    CODialogColorStyleOrange
+};
+typedef NSInteger CODialogColorStyle;
+
 @interface CODialog : UIView
 @property (nonatomic, strong) UIView *customView;
 @property (nonatomic, assign) CODialogStyle dialogStyle;
+@property (nonatomic, assign) CODialogColorStyle dialogColorStyle;
 @property (nonatomic, copy) NSString *title;
 @property (nonatomic, copy) NSString *subtitle;
 @property (nonatomic, assign) CGFloat progress;
 @property (nonatomic, assign) NSTimeInterval batchDelay;
+
 
 + (instancetype)dialogWithWindow:(UIWindow *)hostWindow;
 
@@ -41,6 +51,7 @@ typedef NSInteger CODialogStyle;
 - (void)addTextFieldWithPlaceholder:(NSString *)placeholder secure:(BOOL)secure;
 - (void)addButtonWithTitle:(NSString *)title target:(id)target selector:(SEL)sel;
 - (void)addButtonWithTitle:(NSString *)title target:(id)target selector:(SEL)sel highlighted:(BOOL)flag;
+-(void)addButtonWithTitle:(NSString *)title target:(id)target selector:(SEL)sel tag:(NSInteger)tag highlighted:(BOOL)flag;
 
 /** @name Getting Values */
 
@@ -61,5 +72,6 @@ typedef NSInteger CODialogStyle;
 - (void)drawSymbolInRect:(CGRect)rect;
 - (void)drawTextFieldInRect:(CGRect)rect;
 - (void)drawDimmedBackgroundInRect:(CGRect)rect;
+
 
 @end
