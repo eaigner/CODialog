@@ -7,6 +7,7 @@
 //
 
 #import "CODialog.h"
+#import <QuartzCore/QuartzCore.h>
  
 
 
@@ -22,6 +23,7 @@
 @property (nonatomic, strong) CODialogWindowOverlay *overlay;
 @property (nonatomic, strong) UIWindow *hostWindow;
 @property (nonatomic, strong) UIView *contentView;
+ 
 @property (nonatomic, strong) UIView *accessoryView;
 @property (nonatomic, strong) NSMutableArray *textFields;
 @property (nonatomic, strong) NSMutableArray *buttons;
@@ -36,6 +38,7 @@
 #define kCODialogAnimationDuration 0.15  
 #define kCODialogPopScale 0.5
 #define kCODialogPadding 8.0
+#define kCODialogCornerRadius 8.0
 #define kCODialogFrameInset 8.0
 #define kCODialogButtonHeight 44.0
 #define kCODialogTextFieldHeight 29.0
@@ -49,6 +52,9 @@
     CGRect textFieldsRect;
     CGRect buttonRect;
   } layout;
+    
+    UILabel *lbTitle;
+    UILabel *lbSubTitle;
 }
 CODialogSynth(customView)
 CODialogSynth(dialogStyle)
@@ -59,6 +65,7 @@ CODialogSynth(batchDelay)
 CODialogSynth(overlay)
 CODialogSynth(hostWindow)
 CODialogSynth(contentView)
+ 
 CODialogSynth(accessoryView)
 CODialogSynth(textFields)
 CODialogSynth(buttons)
@@ -77,13 +84,29 @@ CODialogSynth(highlightedIndex)
     self.batchDelay = 0;
     self.highlightedIndex = -1;
     self.titleFont = [UIFont boldSystemFontOfSize:18.0];
-    self.subtitleFont = [UIFont systemFontOfSize:14.0];
+    self.subtitleFont = [UIFont systemFontOfSize:15.0];
     self.hostWindow = hostWindow;
     self.opaque = NO;
     self.alpha = 1.0;
     self.buttons = [NSMutableArray new];
     self.textFields = [NSMutableArray new];
-    
+      self.contentMode=UIViewContentModeRedraw;
+      
+      
+      CGColorRef dialogShadow = [UIColor blackColor].CGColor;
+      CGSize shadowOffset = CGSizeMake(0, 4);
+       
+      [self.layer setCornerRadius:kCODialogCornerRadius];
+      self.layer.shadowRadius = kCODialogCornerRadius;
+      
+      self.layer.shadowOffset = shadowOffset;
+      self.layer.shadowOpacity = 0.5;
+      self.layer.shadowRadius=kCODialogFrameInset-2.0;
+      
+      self.layer.shadowColor = dialogShadow;
+      self.layer.shadowPath = [UIBezierPath bezierPathWithRect:self.bounds].CGPath;
+      
+      
     // Register for keyboard notifications
     NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
     [nc addObserver:self selector:@selector(keyboardWillShow:) name:UIKeyboardWillShowNotification object:nil];
@@ -128,7 +151,7 @@ CODialogSynth(highlightedIndex)
 - (CGRect)defaultDialogFrame {
   CGRect appFrame = [[UIScreen mainScreen] applicationFrame];
   CGRect insetFrame = CGRectIntegral(CGRectInset(appFrame, 20.0, 20.0));
-  insetFrame.size.height = 180.0;
+  insetFrame.size.height = 30.0;
   
   return insetFrame;
 }
@@ -176,25 +199,45 @@ CODialogSynth(highlightedIndex)
   return nil;
 }
 
+-(UIView*)createNewContentView:(CGRect)layoutFrame
+{
+    UIView *aView= [[UIView alloc] initWithFrame:layoutFrame];
+    
+ 
+    CGFloat cornerRadius = 8.0;  
+    aView.layer.cornerRadius=cornerRadius;
+    aView.layer.backgroundColor=[[self backgroundColor] CGColor];
+    aView.layer.borderColor=[UIColor colorWithWhite:1 alpha:0.5].CGColor;
+    aView.layer.borderWidth = 2.0f;  
+    // [self drawDialogBackgroundInRect:aView.frame];
+    
+    return aView;
+    
+    
+}
+
+
 - (void)layoutComponents {
   [self setNeedsDisplay];
   
   // Compute frames of components
-  CGFloat layoutFrameInset = kCODialogFrameInset + kCODialogPadding;
+    CGFloat layoutFrameInset = kCODialogFrameInset; // + kCODialogPadding;
   CGRect layoutFrame = CGRectInset(self.bounds, layoutFrameInset, layoutFrameInset);
   CGFloat layoutWidth = CGRectGetWidth(layoutFrame);
   
   // Title frame
   CGFloat titleHeight = 0;
-  CGFloat minY = CGRectGetMinY(layoutFrame);
+    CGFloat minY = kCODialogFrameInset; //CGRectGetMinY(layoutFrame);
   if (self.title.length > 0) {
     titleHeight = [self.title sizeWithFont:self.titleFont
                          constrainedToSize:CGSizeMake(layoutWidth, MAXFLOAT)
                              lineBreakMode:UILineBreakModeWordWrap].height;
-    minY += kCODialogPadding;
+   // minY += kCODialogPadding;
   }
-  layout.titleRect = CGRectMake(CGRectGetMinX(layoutFrame), minY, layoutWidth, titleHeight);
+  layout.titleRect = CGRectMake(0 /* CGRectGetMinX(layoutFrame) */, minY, layoutWidth, titleHeight);
   
+ 
+    
   // Subtitle frame
   CGFloat subtitleHeight = 0;
   minY = CGRectGetMaxY(layout.titleRect);
@@ -202,10 +245,14 @@ CODialogSynth(highlightedIndex)
     subtitleHeight = [self.subtitle sizeWithFont:self.subtitleFont
                                constrainedToSize:CGSizeMake(layoutWidth, MAXFLOAT)
                                    lineBreakMode:UILineBreakModeWordWrap].height;
-    minY += kCODialogPadding;
+   // minY += kCODialogPadding;
   }
-  layout.subtitleRect = CGRectMake(CGRectGetMinX(layoutFrame), minY, layoutWidth, subtitleHeight);
+  layout.subtitleRect = CGRectMake(0, minY, layoutWidth, subtitleHeight);
+        
+     
   
+ 
+    
   // Accessory frame (note that views are in the content view coordinate system)
   self.accessoryView = [self makeAccessoryView];
   self.accessoryView.autoresizingMask = UIViewAutoresizingFlexibleBottomMargin;
@@ -243,23 +290,64 @@ CODialogSynth(highlightedIndex)
         
       if (self.buttons.count<3)
       {
-    buttonsHeight = kCODialogButtonHeight;
+    buttonsHeight = kCODialogButtonHeight+kCODialogFrameInset;
     minY += kCODialogPadding;
       }
       else
       {
-          buttonsHeight = kCODialogButtonHeight*(CGFloat)self.buttons.count+kCODialogPadding*(CGFloat)(self.buttons.count-1);
+          buttonsHeight = kCODialogButtonHeight*(CGFloat)self.buttons.count+kCODialogPadding*(CGFloat)(self.buttons.count-1)+kCODialogFrameInset;
           minY += kCODialogPadding;  
       }
   }
-  layout.buttonRect = CGRectMake(CGRectGetMinX(layoutFrame), minY, layoutWidth, buttonsHeight);
+  layout.buttonRect = CGRectMake(CGRectGetMinX(layoutFrame)+kCODialogFrameInset, minY, layoutWidth-(kCODialogFrameInset*2), buttonsHeight);
   
   // Adjust layout frame
   layoutFrame.size.height = CGRectGetMaxY(layout.buttonRect);
   
   // Create new content view
-  UIView *newContentView = [[UIView alloc] initWithFrame:layoutFrame];
+    UIView *newContentView =[self createNewContentView:layoutFrame];
+    
   newContentView.contentMode = UIViewContentModeRedraw;
+    
+    if (titleHeight!=0)
+    {
+        
+        if (lbTitle)
+        { [lbTitle removeFromSuperview];
+            lbTitle=nil;
+        }
+        
+        lbTitle=[[UILabel alloc] initWithFrame:layout.titleRect];
+        lbTitle.backgroundColor = [UIColor clearColor];
+        lbTitle.font = self.titleFont;
+        lbTitle.shadowColor = [UIColor blackColor];
+        lbTitle.shadowOffset = CGSizeMake(0,-1);
+        lbTitle.textColor = [UIColor whiteColor];
+        lbTitle.textAlignment = UITextAlignmentCenter;
+        lbTitle.text=title_;
+    [newContentView addSubview:lbTitle];
+    }
+    
+    if ( subtitleHeight!=0)
+    {
+        
+        if (lbSubTitle)
+        { [lbSubTitle removeFromSuperview];
+            lbSubTitle=nil;
+        }
+        
+        lbSubTitle=[[UILabel alloc] initWithFrame:layout.subtitleRect];
+        lbSubTitle.backgroundColor = [UIColor clearColor];
+        lbSubTitle.font = self.subtitleFont;
+        lbSubTitle.shadowColor = [UIColor blackColor];
+        lbSubTitle.shadowOffset = CGSizeMake(0,-1);
+        lbSubTitle.textColor = [UIColor whiteColor];
+        lbSubTitle.textAlignment = UITextAlignmentCenter;
+         
+        lbSubTitle.text=subtitle_;
+        [newContentView addSubview:lbSubTitle];
+    }
+
   
   // Layout accessory view
   self.accessoryView.frame = layout.accessoryRect;
@@ -270,9 +358,9 @@ CODialogSynth(highlightedIndex)
   if (numTextFields > 0) {
     for (int i=0; i<numTextFields; i++) {
       CGFloat offsetY = (kCODialogTextFieldHeight + kCODialogPadding) * (CGFloat)i;
-      CGRect fieldFrame = CGRectMake(0,
+      CGRect fieldFrame = CGRectMake(kCODialogFrameInset,
                                      CGRectGetMinY(layout.textFieldsRect) + offsetY,
-                                     layoutWidth,
+                                     layoutWidth-kCODialogFrameInset*2,
                                      kCODialogTextFieldHeight);
       
       UITextField *field = [self.textFields objectAtIndex:i];
@@ -291,8 +379,8 @@ CODialogSynth(highlightedIndex)
     CGFloat buttonWidth = (CGRectGetWidth(layout.buttonRect) - kCODialogPadding * ((CGFloat)count - 1.0)) / (CGFloat)count;
     
     for (int i=0; i<count; i++) {
-      CGFloat left = (kCODialogPadding + buttonWidth) * (CGFloat)i;
-      CGRect buttonFrame = CGRectIntegral(CGRectMake(left, CGRectGetMinY(layout.buttonRect), buttonWidth, CGRectGetHeight(layout.buttonRect)));
+      CGFloat left = kCODialogFrameInset+(kCODialogPadding + buttonWidth) * (CGFloat)i;
+      CGRect buttonFrame = CGRectIntegral(CGRectMake(left, CGRectGetMinY(layout.buttonRect), buttonWidth, kCODialogButtonHeight));
       
       UIButton *button = [self.buttons objectAtIndex:i];
       button.frame = buttonFrame;
@@ -307,7 +395,7 @@ CODialogSynth(highlightedIndex)
       [self drawButtonInRect:(CGRect){CGPointZero, buttonFrame.size} title:title highlighted:highlighted down:NO];
       
       [button setImage:UIGraphicsGetImageFromCurrentImageContext() forState:UIControlStateNormal];
-      
+     
       UIGraphicsEndImageContext();
       
       // Set alternate image
@@ -325,7 +413,7 @@ CODialogSynth(highlightedIndex)
           CGFloat buttonWidth = (CGRectGetWidth(layout.buttonRect)) /* * ((CGFloat)count - 1.0)) / (CGFloat)count */;
           
           for (int i=0; i<count; i++) {
-              CGFloat left = 0 /*(kCODialogPadding + buttonWidth) * (CGFloat)i */;
+              CGFloat left = kCODialogFrameInset; //(kCODialogPadding + buttonWidth) * (CGFloat)i 
               CGRect buttonFrame = CGRectIntegral(CGRectMake(left, CGRectGetMinY(layout.buttonRect)+(kCODialogPadding+kCODialogButtonHeight)*(CGFloat)i, buttonWidth, kCODialogButtonHeight));
               
               UIButton *button = [self.buttons objectAtIndex:i];
@@ -357,6 +445,7 @@ CODialogSynth(highlightedIndex)
 
           
   }
+   
   
   // Fade content views
   CGFloat animationDuration = kCODialogAnimationDuration;
@@ -370,22 +459,36 @@ CODialogSynth(highlightedIndex)
                     }];
   } else {
     self.contentView = newContentView;
-    [self addSubview:newContentView];
+   [self addSubview:newContentView];
     
     // Don't animate frame adjust if there was no content before
     animationDuration = 0;
   }
   
   // Adjust frame size
-  [UIView animateWithDuration:animationDuration delay:0 options:UIViewAnimationOptionLayoutSubviews animations:^{
-    CGRect dialogFrame = CGRectInset(layoutFrame, -kCODialogFrameInset - kCODialogPadding, -kCODialogFrameInset - kCODialogPadding);
+ // [UIView animateWithDuration:animationDuration delay:0 options:UIViewAnimationOptionLayoutSubviews animations:^{
+    CGRect dialogFrame = CGRectInset(layoutFrame, -kCODialogFrameInset /* GIACOMO - kCODialogPadding */, -kCODialogFrameInset /* GIACOMO - kCODialogPadding */);
     dialogFrame.origin.x = (CGRectGetWidth(self.hostWindow.bounds) - CGRectGetWidth(dialogFrame)) / 2.0;
     dialogFrame.origin.y = (CGRectGetHeight(self.hostWindow.bounds) - CGRectGetHeight(dialogFrame)) / 2.0;
     
-    self.frame = CGRectIntegral(dialogFrame);
-  } completion:^(BOOL finished) {
+    self.layer.frame=CGRectIntegral(dialogFrame);
+    CGColorRef dialogShadow = [UIColor blackColor].CGColor;
+    CGSize shadowOffset = CGSizeMake(0, 4);
+ 
+    [self.layer setCornerRadius:kCODialogCornerRadius];
+    self.layer.shadowRadius = kCODialogCornerRadius;
+    
+    self.layer.shadowOffset = shadowOffset;
+    self.layer.shadowOpacity = 0.5;
+    self.layer.shadowRadius=kCODialogFrameInset-2.0;
+    
+    self.layer.shadowColor = dialogShadow;
+    self.layer.shadowPath = [UIBezierPath bezierPathWithRect:self.bounds].CGPath;
+    
+//  } completion:^(BOOL finished) {
     [self setNeedsDisplay];
-  }];
+  // }];
+     
 }
 
 - (void)resetLayout {
@@ -475,7 +578,7 @@ CODialogSynth(highlightedIndex)
   
   // Layout components
   [self layoutComponents];
-  
+  [self.layer setNeedsDisplay];
   if (show) {
     // Scale down ourselves for pop animation
     self.transform = CGAffineTransformMakeScale(kCODialogPopScale, kCODialogPopScale);
@@ -485,6 +588,7 @@ CODialogSynth(highlightedIndex)
     [UIView animateWithDuration:animationDuration delay:0 options:UIViewAnimationOptionLayoutSubviews animations:^{
       overlay.alpha = 1.0;
       self.transform = CGAffineTransformIdentity;
+        
     } completion:^(BOOL finished) {
       // stub
     }];
@@ -531,18 +635,37 @@ CODialogSynth(highlightedIndex)
   [self performSelector:selector withObject:[NSNumber numberWithBool:flag] afterDelay:delay];
 }
 
-- (void)drawDialogBackgroundInRect:(CGRect)rect {
-  // General Declarations
-  CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-  CGContextRef context = UIGraphicsGetCurrentContext();
+-(UIColor*) backgroundColor
+{
+    switch (dialogColorStyle_) {
+        case CODialogColorStyleBlue:
+            return [UIColor colorWithRed:0.047 green:0.141 blue:0.329 alpha:0.9];
+            break;
+            
+        case CODialogColorStyleGreen:    
+            return [UIColor colorWithRed:0.047 green:0.329 blue:0.141 alpha:0.9];
+            break;
+            
+        case CODialogColorStyleOrange:
+            return [UIColor colorWithRed:0.935 green:0.403 blue:0.02 alpha:0.9];
+            break;
+            
+    }  
+    return nil;
+}
+
+- (void)drawDialogBackgroundInRect:(CGRect)frame {
+/*  // General Declarations
+   CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+   CGContextRef context = UIGraphicsGetCurrentContext();  
   
   // Set alpha
-  CGContextSaveGState(context);
-  CGContextSetAlpha(context, 0.65);
+   CGContextSaveGState(context);
+   CGContextSetAlpha(context, 0.65);
   
   // Color Declarations
- // GP  
-    UIColor *color;
+ 
+   
     NSArray *gradientColors;
     
     
@@ -550,25 +673,19 @@ CODialogSynth(highlightedIndex)
   // Gradient Declarations
     switch (dialogColorStyle_) {
         case CODialogColorStyleBlue:
-            color = [UIColor colorWithRed:0.047 green:0.141 blue:0.329 alpha:0.9];
             gradientColors = [NSArray arrayWithObjects: 
                                           (id)[UIColor colorWithWhite:1.0 alpha:0.75].CGColor, 
                                           (id)[UIColor colorWithRed:0.227 green:0.310 blue:0.455 alpha:0.8].CGColor, nil];
             break;
             
         case CODialogColorStyleGreen:    
-             color = [UIColor colorWithRed:0.047 green:0.329 blue:0.141 alpha:0.9];
              gradientColors=[NSArray arrayWithObjects: 
                             (id)[UIColor colorWithWhite:1.0 alpha:0.75].CGColor, 
                             (id)[UIColor colorWithRed:0.227 green:0.455 blue:0.310 alpha:0.8].CGColor, nil];
             break;
         
         case CODialogColorStyleOrange:
-            color = [UIColor colorWithRed:0.935 green:0.403 blue:0.02 alpha:0.9];
-            
-         
-            
-            gradientColors=[NSArray arrayWithObjects: 
+             gradientColors=[NSArray arrayWithObjects: 
                             (id)[UIColor colorWithWhite:1.0 alpha:0.75].CGColor, 
                             (id)[UIColor colorWithRed:0.97 green:0.582 blue:0.0 alpha:0.8].CGColor, nil];
             break;
@@ -579,28 +696,7 @@ CODialogSynth(highlightedIndex)
   CGFloat gradientLocations[] = {0, 1};
   CGGradientRef gradient2 = CGGradientCreateWithColors(colorSpace, (__bridge CFArrayRef)gradientColors, gradientLocations);
   
-  // Abstracted Graphic Attributes
-  CGFloat cornerRadius = 8.0;
-  CGFloat strokeWidth = 2.0;
-  CGColorRef dialogShadow = [UIColor blackColor].CGColor;
-  CGSize shadowOffset = CGSizeMake(0, 4);
-  CGFloat shadowBlurRadius = kCODialogFrameInset - 2.0;
-  
-  CGRect frame = CGRectInset(CGRectIntegral(self.bounds), kCODialogFrameInset, kCODialogFrameInset);
-  
-  // Rounded Rectangle Drawing
-  UIBezierPath *roundedRectanglePath = [UIBezierPath bezierPathWithRoundedRect:frame cornerRadius:cornerRadius];
-  
-  CGContextSaveGState(context);
-  CGContextSetShadowWithColor(context, shadowOffset, shadowBlurRadius, dialogShadow);
-  
-  [color setFill];
-  [roundedRectanglePath fill];
-  
-  CGContextRestoreGState(context);
-  
-  // Set clip path
-  [roundedRectanglePath addClip];
+     
   
   // Bezier Drawing
   CGFloat mx = CGRectGetMinX(frame);
@@ -620,25 +716,19 @@ CODialogSynth(highlightedIndex)
   [bezierPath addLineToPoint:CGPointMake(mx, h1)];
   [bezierPath closePath];
   
-  CGContextSaveGState(context);
+  // CGContextSaveGState(context);
   
   [bezierPath addClip]; 
    
   CGContextDrawLinearGradient(context, gradient2, CGPointMake(w2, 0), CGPointMake(w2, h2), 0);
-  CGContextRestoreGState(context); 
+  CGContextRestoreGState(context);  
   
-  // Stroke
-  [[UIColor whiteColor] setStroke];  
-  UIBezierPath *strokePath = [UIBezierPath bezierPathWithRoundedRect:CGRectInset(frame, strokeWidth / 2.0, strokeWidth / 2.0)
-                                                        cornerRadius:cornerRadius - strokeWidth / 2.0];
-  strokePath.lineWidth = strokeWidth;
   
-  [strokePath stroke];
   
   // Cleanup
-  CGGradientRelease(gradient2);
+  // CGGradientRelease(gradient2);
   CGColorSpaceRelease(colorSpace);
-  CGContextRestoreGState(context);
+  CGContextRestoreGState(context); */
 }
 
 - (void)drawButtonInRect:(CGRect)rect title:(NSString *)title highlighted:(BOOL)highlighted down:(BOOL)down {
@@ -706,6 +796,7 @@ CODialogSynth(highlightedIndex)
                               gradient,
                               CGPointMake(CGRectGetMidX(buttonFrame), CGRectGetMinY(buttonFrame)),
                               CGPointMake(CGRectGetMidX(buttonFrame), CGRectGetMaxY(buttonFrame)), 0);
+    gradient=nil;
   CGContextRestoreGState(ctx);
   
   // Draw highlight or down state
@@ -765,6 +856,8 @@ CODialogSynth(highlightedIndex)
     CGContextRestoreGState(ctx);
   }
 }
+
+ 
 
 - (void)drawSymbolInRect:(CGRect)rect { 
   CGContextRef ctx = UIGraphicsGetCurrentContext();
@@ -907,7 +1000,7 @@ CODialogSynth(highlightedIndex)
 
 - (void)drawDimmedBackgroundInRect:(CGRect)rect {
   // General Declarations
-  CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+ /* GIACOMO  CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
   CGContextRef context = UIGraphicsGetCurrentContext();
   
   // Color Declarations
@@ -932,17 +1025,16 @@ CODialogSynth(highlightedIndex)
                               mid, 10,
                               mid, CGRectGetMidY(rect),
                               kCGGradientDrawsBeforeStartLocation | kCGGradientDrawsAfterEndLocation);
-  CGContextRestoreGState(context);
+  CGContextRestoreGState(context); 
   
   // Cleanup
   CGGradientRelease(gradient);
-  CGColorSpaceRelease(colorSpace);
+  CGColorSpaceRelease(colorSpace); */
 }
 
 - (void)drawRect:(CGRect)rect {
-  [self drawDialogBackgroundInRect:rect];
-  [self drawTitleInRect:layout.titleRect isSubtitle:NO];
-  [self drawTitleInRect:layout.subtitleRect isSubtitle:YES];
+    [self drawDialogBackgroundInRect:rect];
+  
 }
 
 #pragma mark - UITextFieldDelegate
