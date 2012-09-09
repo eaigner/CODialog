@@ -38,6 +38,7 @@ typedef NSInteger CODialogStyle;
 - (void)removeAllTextFields;
 - (void)removeAllButtons;
 
+- (void)addTextFieldWithPlaceholder:(NSString *)placeholder text:(NSString *)text secure:(BOOL)secure;
 - (void)addTextFieldWithPlaceholder:(NSString *)placeholder secure:(BOOL)secure;
 - (void)addButtonWithTitle:(NSString *)title target:(id)target selector:(SEL)sel;
 - (void)addButtonWithTitle:(NSString *)title target:(id)target selector:(SEL)sel highlighted:(BOOL)flag;

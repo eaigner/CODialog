@@ -360,24 +360,27 @@ CODialogSynth(highlightedIndex)
   [self.buttons removeAllObjects];
   self.highlightedIndex = -1;
 }
-
+- (void)addTextFieldWithPlaceholder:(NSString *)placeholder text:(NSString *)text secure:(BOOL)secure{
+    for (UITextField *field in self.textFields) {
+        field.returnKeyType = UIReturnKeyNext;
+    }
+    
+    CODialogTextField *field = [[CODialogTextField alloc] initWithFrame:CGRectMake(0, 0, 200, kCODialogTextFieldHeight)];
+    field.dialog = self;
+    field.returnKeyType = UIReturnKeyDone;
+    field.placeholder = placeholder;
+    field.secureTextEntry = secure;
+    field.text = text;
+    field.font = [UIFont systemFontOfSize:kCODialogTextFieldHeight - 8.0];
+    field.contentVerticalAlignment = UIControlContentVerticalAlignmentCenter;
+    field.textColor = [UIColor blackColor];
+    field.keyboardAppearance = UIKeyboardAppearanceAlert;
+    field.delegate = (id)self;
+    
+    [self.textFields addObject:field];
+}
 - (void)addTextFieldWithPlaceholder:(NSString *)placeholder secure:(BOOL)secure {
-  for (UITextField *field in self.textFields) {
-    field.returnKeyType = UIReturnKeyNext;
-  }
-  
-  CODialogTextField *field = [[CODialogTextField alloc] initWithFrame:CGRectMake(0, 0, 200, kCODialogTextFieldHeight)];
-  field.dialog = self;
-  field.returnKeyType = UIReturnKeyDone;
-  field.placeholder = placeholder;
-  field.secureTextEntry = secure;
-  field.font = [UIFont systemFontOfSize:kCODialogTextFieldHeight - 8.0];
-  field.contentVerticalAlignment = UIControlContentVerticalAlignmentCenter;
-  field.textColor = [UIColor blackColor];
-  field.keyboardAppearance = UIKeyboardAppearanceAlert;
-  field.delegate = (id)self;
-  
-  [self.textFields addObject:field];
+    [self addTextFieldWithPlaceholder:placeholder text:@"" secure:secure];
 }
 
 - (void)addButtonWithTitle:(NSString *)title target:(id)target selector:(SEL)sel {
