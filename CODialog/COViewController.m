@@ -32,6 +32,11 @@
   [self showDefault:nil];
 }
 
+- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
+{
+    return YES;
+}
+
 - (void)advanceProgress:(NSTimer *)sender {
   CGFloat progress = self.dialog.progress + 0.25;
   if (progress > 1.0) {
