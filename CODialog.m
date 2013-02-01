@@ -633,6 +633,7 @@ CODialogSynth(highlightedIndex)
                               CGPointMake(CGRectGetMidX(buttonFrame), CGRectGetMinY(buttonFrame)),
                               CGPointMake(CGRectGetMidX(buttonFrame), CGRectGetMaxY(buttonFrame)), 0);
   CGContextRestoreGState(ctx);
+  CGGradientRelease(gradient);
   
   // Draw highlight or down state
   if (highlighted) {
